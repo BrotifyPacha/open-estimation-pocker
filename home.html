@@ -1,0 +1,89 @@
+<head>
+    <title>estimation-poker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./ui.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="container mx-auto flex flex-col items-center gap-5 pt-10 bg-zinc-800 text-slate-50">
+
+    <h2 class="text-2xl">Estimation Poker</h2>
+
+
+    <div id="login-view" class="flex flex-col items-stretch gap-2">
+        <input
+                class="bg-cyan-900 px-3 py-1 rounded-0"
+                placeholder="your name" id="username" type="text">
+        <button
+                class="bg-cyan-700 px-3 py-1"
+                onclick="CreateRandomRoom()">Create room</button>
+        <span class="text-rose-400" id="username_error"></span>
+        <span class="text-center">or</span>
+        <div class="flex gap-2">
+            <input
+                    class="bg-cyan-900 px-3 py-1"
+                    style="-webkit-appearance: none"
+                    placeholder="room id" id="room_id" type="text">
+            <button
+                    class="bg-cyan-700 px-3 py-1"
+                    onclick="CreateCustomRoom();">Join</button>
+        </div>
+        <span class="text-rose-400" id="room_id_error"></span>
+    </div>
+
+    <script>
+        const roomIdElement = document.getElementById('room_id')
+        const usernameElement = document.getElementById('username')
+        const usernameError = document.getElementById('username_error')
+        const roomIdError = document.getElementById('room_id_error')
+
+        function CreateRandomRoom() {
+            const roomId = makeid(8)
+            const username = usernameElement.value
+
+            if (username != '') {
+                usernameError.innerText = ''
+                window.location.replace("/" + roomId + "?username=" + username)
+            } else {
+                usernameError.innerText = 'Enter your username'
+            }
+        }
+
+        function CreateCustomRoom() {
+            const roomId = roomIdElement.value
+            const username = usernameElement.value
+
+            if (username == '') {
+                usernameError.innerText = 'Enter your username'
+            } else {
+                usernameError.innerText = ''
+            }
+
+            if (roomId == '') {
+                roomIdError.innerText = 'Enter room id to join'
+            } else {
+                roomIdError.innerText = ''
+            }
+
+
+
+            if (username != '' && roomId != '') {
+                window.location.replace("/" + roomId + "?username=" + username)
+            } else {
+                errorElement.innerText = 'Room id and username must not be empty'
+            }
+        }
+
+        function makeid(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charactersLength = characters.length;
+            let counter = 0;
+            while (counter < length) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+                counter += 1;
+            }
+            return result;
+        }
+    </script>
+
+</body>

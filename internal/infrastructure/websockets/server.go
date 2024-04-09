@@ -1,0 +1,352 @@
+package websockets
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"math/rand"
+	"sync"
+	"time"
+
+	"estimation-poker/internal/domain"
+
+	"golang.org/x/net/websocket"
+)
+
+type UserConnection struct {
+	*domain.User
+	RoomID        string
+	LastHeartbeat time.Time
+	Connection    *websocket.Conn
+}
+
+var (
+	HeartBeatInterval       = time.Second * 15
+	CheckHeartBeatsInterval = time.Second * 15
+	heartbeatLogEnabled     = false
+)
+
+type Server struct {
+	Rooms       map[string]domain.Room
+	Connections map[string]UserConnection
+	roomMx      sync.RWMutex
+	connMx      sync.RWMutex
+	Queue       domain.EventQueue
+}
+
+func NewServer(ctx context.Context, queue domain.EventQueue) *Server {
+
+	server := &Server{
+		Connections: make(map[string]UserConnection),
+		Rooms:       make(map[string]domain.Room),
+		roomMx:      sync.RWMutex{},
+		connMx:      sync.RWMutex{},
+		Queue:       queue,
+	}
+
+	go server.runHeartbeatChecker(ctx)
+
+	return server
+}
+
+func logHeartBeats(format string, message ...any) {
+	if !heartbeatLogEnabled {
+		return
+	}
+	log.Printf("heartbeat: "+format+"\n", message...)
+}
+
+func (s *Server) runHeartbeatChecker(ctx context.Context) {
+	ticker := time.Tick(CheckHeartBeatsInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker:
+			if len(s.Connections) == 0 {
+				continue
+			}
+
+			logHeartBeats("checker: start")
+			toClose := []string{}
+
+			s.connMx.RLock()
+			for userID, userConn := range s.Connections {
+				if time.Since(userConn.LastHeartbeat) > HeartBeatInterval {
+					logHeartBeats("checker: failed roomID = %s userID = %s name %s", userConn.RoomID, userID, userConn.Name)
+					toClose = append(toClose, userID)
+				}
+			}
+			s.connMx.RUnlock()
+
+			s.connMx.Lock()
+			for _, userIDToClose := range toClose {
+				userConn := s.Connections[userIDToClose]
+				userConn.Connection.Close()
+				delete(s.Connections, userIDToClose)
+
+				s.Queue.Publish(domain.UserLeftEvent(userConn.RoomID, *userConn.User))
+
+			}
+			s.connMx.Unlock()
+			logHeartBeats("checker: finished")
+		}
+
+	}
+}
+
+func (s *Server) WebsocketHandler(c *websocket.Conn) {
+	log.Println("handling websocket url")
+
+	roomID := c.Request().PathValue("room_id")
+	username := c.Request().URL.Query().Get("username")
+
+	if username == "" {
+		log.Println("username is empty")
+		c.Write([]byte("error: username missing"))
+		c.WriteClose(400)
+		return
+	}
+
+	_, ok := s.Rooms[roomID]
+	if !ok {
+		log.Println("room didn't exist created one")
+		s.roomMx.Lock()
+		s.Rooms[roomID] = domain.Room{
+			ID:              roomID,
+			Users:           []domain.User{},
+			EstimationTasks: []string{},
+			// EstimationValues: domain.DefaultEstimationPreset,
+		}
+		s.roomMx.Unlock()
+	}
+
+	s.handleConnections(username, roomID, c)
+}
+
+func (s *Server) handleConnections(username string, roomID string, c *websocket.Conn) {
+
+	userID := fmt.Sprint(rand.Int63())
+	user := domain.User{ID: userID, Name: username}
+
+	s.connMx.Lock()
+	s.Connections[userID] = UserConnection{
+		User:          &user,
+		RoomID:        roomID,
+		LastHeartbeat: time.Now(),
+		Connection:    c,
+	}
+	s.connMx.Unlock()
+
+	err := websocket.JSON.Send(c, domain.UserInitializationEvent(roomID, user))
+	if err != nil {
+		logErrorf("init: %s", err.Error())
+	}
+	err = s.Queue.Publish(domain.UserJoinedEvent(roomID, user))
+	if err != nil {
+		logErrorf("join: %s", err.Error())
+	}
+
+	wg := sync.WaitGroup{}
+
+	// handle connetions
+	// queue events -> Connections
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			s.connMx.RLock()
+			_, ok := s.Connections[userID]
+			if !ok {
+				s.connMx.RUnlock()
+				break
+			}
+			s.connMx.RUnlock()
+
+			message := ""
+			err := websocket.Message.Receive(c, &message)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+
+					log.Println("closed connection for", userID)
+
+					s.connMx.Lock()
+					delete(s.Connections, userID)
+					s.connMx.Unlock()
+
+					s.Queue.Publish(domain.UserLeftEvent(roomID, user))
+
+					break
+				}
+				logErrorf("receive: %s", err.Error())
+			}
+
+			if message == "ping" {
+				websocket.Message.Send(c, "pong")
+
+				logHeartBeats("received: roomID = %s userID = %s name = %s", roomID, userID, username)
+
+				s.connMx.Lock()
+				conn := s.Connections[userID]
+				conn.LastHeartbeat = time.Now()
+				s.Connections[userID] = conn
+				s.connMx.Unlock()
+				continue
+			}
+
+			var event domain.Event
+			err = json.Unmarshal([]byte(message), &event)
+			if err != nil {
+				logErrorf("receive: unmarshal: %s", err.Error())
+				continue
+			}
+
+			// if event.Type == domain.EventTypeTaskListChanged {
+			// 	var taskListChangedData domain.TaskListData
+			// 	err = json.Unmarshal([]byte(message), &taskListChangedData)
+			// 	if err != nil {
+			// 		logErrorf("receive: unmarshal: %s", err.Error())
+			// 		continue
+			// 	}
+			// 	event.Data = taskListChangedData.Tasks
+			// }
+
+			event.UserID = userID
+			event.RoomID = roomID
+
+			log.Println("published")
+			s.Queue.Publish(event)
+
+		}
+	}()
+
+	// handle connetions
+	// connection events -> queue
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		eventCh, err := s.Queue.Subscribe()
+		if err != nil {
+			logErrorf("%s", err.Error())
+			return
+		}
+		for event := range eventCh {
+
+			log.Println("received")
+
+			switch event.Type {
+			case domain.EventTypeUserJoined:
+				{
+					eventData, ok := event.Data.(domain.UserData)
+					if !ok {
+						continue
+					}
+					s.roomMx.Lock()
+
+					room := s.Rooms[event.RoomID]
+					room.Users = append(room.Users, eventData.User)
+
+					if len(s.Rooms[event.RoomID].Users) == 0 {
+						room.HostID = eventData.User.ID
+					}
+
+					s.Rooms[event.RoomID] = room
+
+					s.roomMx.Unlock()
+					go s.Queue.Publish(domain.RoomStateEvent(room))
+					continue
+				}
+			case domain.EventTypeUserLeft:
+				{
+					eventData, ok := event.Data.(domain.UserData)
+					if !ok {
+						continue
+					}
+
+					s.roomMx.Lock()
+
+					room := s.Rooms[event.RoomID]
+
+					users := []domain.User{}
+					for _, user := range room.Users {
+						if user.ID != eventData.User.ID {
+							users = append(users, user)
+						}
+					}
+					room.Users = users
+
+					hostLeft := room.HostID == eventData.User.ID
+					if hostLeft && len(room.Users) > 0 {
+						room.HostID = room.Users[0].ID
+					}
+
+					s.Rooms[event.RoomID] = room
+
+					s.roomMx.Unlock()
+					go s.Queue.Publish(domain.RoomStateEvent(room))
+					continue
+				}
+			case domain.EventTypeTaskListChanged:
+				{
+					eventDataI, ok := event.Data.(map[string]any)
+					fmt.Printf("norm %v\n", eventDataI)
+					if !ok {
+						continue
+					}
+					tasksI, ok := eventDataI["tasks"].([]any)
+					if !ok {
+						fmt.Printf("fail %v", eventDataI)
+						continue
+					}
+					tasks := make([]string, 0, len(tasksI))
+					for _, t := range tasksI {
+						tasks = append(tasks, t.(string))
+					}
+
+					s.roomMx.Lock()
+
+					room := s.Rooms[event.RoomID]
+
+					if event.UserID != room.HostID ||
+						event.RoomID != room.ID {
+						s.roomMx.Unlock()
+						continue
+					}
+
+					room.EstimationTasks = tasks
+
+					s.Rooms[event.RoomID] = room
+
+					s.roomMx.Unlock()
+					go s.Queue.Publish(domain.RoomStateEvent(room))
+					continue
+				}
+			}
+
+			s.connMx.RLock()
+			for _, connection := range s.Connections {
+				if connection.RoomID != event.RoomID {
+					continue
+				}
+
+				err := websocket.JSON.Send(connection.Connection, event)
+				if err != nil {
+					fmt.Println("ws send error:", err.Error())
+				}
+			}
+			s.connMx.RUnlock()
+		}
+	}()
+
+	wg.Wait()
+
+	return
+
+}
+
+func logErrorf(format string, args ...string) {
+	log.Printf("error: "+format+"\n", args)
+}

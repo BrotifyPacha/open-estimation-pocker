@@ -1,0 +1,255 @@
+<head>
+    <title>estimation-poker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./ui.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="container mx-auto flex flex-col gap-5 sm:pt-10 pt-3 bg-zinc-800 text-slate-50">
+
+    <h2 class="text-center text-2xl">Estimation Poker</h2>
+
+
+    <div id="login-view" class="flex flex-col self-center gap-2">
+        <input
+                class="bg-cyan-900 px-3 py-1 rounded-0"
+                placeholder="your name" id="username" type="text">
+        <button id="join-button"
+                class="bg-cyan-700 px-3 py-1"
+                onclick="ConnectToRoom()">Join</button>
+        <span class="text-rose-400" id="username_error"></span>
+    </div>
+
+
+    <div id="room-view" class="hidden flex flex-col grid grid-cols-2 gap-5 px-5">
+        <div class="col-span-1 grid-cols-2">
+            <h2 class="col-span-2">Room ID: <span id='room_id_field'></span></h2>
+            <ol id="users_list" class="grid grid-cols-10 gap-1">
+            </ol>
+        </div>
+
+        <div class="col-span-1 flex flex-col gap-3">
+            Tasks to estimate:
+            <ol id="task_list" class="list-decimal list-inside flex flex-col gap-1">
+            </ol>
+
+
+            <div id="host-tasks-controls" data-admin-only="true" class="grid grid-cols-6 gap-2">
+                <input
+                        class="col-span-5 bg-cyan-900 px-3 py-1 rounded-none"
+                        placeholder="url" id="task_url" type="text">
+                <button id="add-task-to-estimate"
+                        class="col-start-6 col-end-7 bg-cyan-700 px-3 py-1"
+                        onclick="addTask()">Add</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="hidden">
+        <!-- user template -->
+        <div id="users_list_item_template">
+            <span class="col-start-1 col-span-1 justify-self-end" id="_host_field_id">👑</span>
+            <span class="col-start-2 col-span-9 text-lg" id="_username_field_id">username</span>
+        </div>
+        <!-- task item template -->
+        <li class="group flex justify-between bg-zinc-50/5 hover:bg-zinc-500/10 pl-3 py-1"
+            id="task_item_template">
+            <a id="link" href="https://google.ru/">BCKLG-31</a>
+            <div id="controls" class="hover-group:flex">
+                <button id="open_btn" data-admin-only="true" class="px-3 bg-zinc-700" onclick="">Select</button>
+                <button id="remove_btn" class="px-3 bg-zinc-700" onclick="removeTask(event)">X</button>
+            </div>
+        </li>
+    </div>
+
+    <script>
+        const loginView = document.getElementById('login-view')
+        const roomView = document.getElementById('room-view')
+        const hostTasksControls = document.getElementById('host-tasks-controls')
+
+        const usernameError = document.getElementById('username_error')
+        const usernameInput = document.getElementById("username")
+
+        const taskUrlInput = document.getElementById("task_url")
+
+        const roomID = window.location.pathname.replaceAll("/", "")
+
+        let userID = ''
+        let ws = {}
+
+        let taskList = []
+
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+
+        if (username != '') {
+            usernameInput.value = username
+            ConnectToRoom()
+        }
+
+        function ConnectToRoom() {
+
+            const username = usernameInput.value
+
+            const roomIDField = document.getElementById("room_id_field")
+            const usersList = document.getElementById("users_list")
+            const userItemTemplate = document.getElementById("users_list_item_template")
+
+
+            const taskListOl = document.getElementById('task_list')
+            const taskItemTemplate = document.getElementById('task_item_template')
+
+
+            var heartbeatWorkerID = 0
+
+            const onopen = (event) => {
+                console.log("connection open ", event)
+                hide(loginView)
+                show(roomView)
+
+                heartbeatWorkerID = setInterval(function(){
+                    const ws = event.target
+
+                    // console.log("send heartbeat")
+                    // console.log(ws)
+                    ws.send('ping')
+
+                }, 1000)
+            };
+            const onerror = (event) => {
+                console.log("error: ", event)
+                show(loginView)
+                hide(roomView)
+                clearInterval(heartbeatWorkerID)
+            };
+            const onclose = (event) => {
+                console.log("closed: ", event)
+                show(loginView)
+                hide(roomView)
+                clearInterval(heartbeatWorkerID)
+            };
+            const onmessage = (event) => {
+                if (event.data == 'pong') {
+                    return
+                }
+                const eventData = JSON.parse(event.data)
+                const data = JSON.parse(event.data).data 
+
+                console.log(eventData)
+
+                switch (eventData.type) {
+                    // user init event
+                    case 0: {
+                        userID = data.user.id
+                        break
+                    }
+                    // room state changed event
+                    case 3: {
+                        roomIDField.innerText = data.id
+
+                        usersList.innerHTML = ''
+
+                        hide(hostTasksControls)
+                        if (data['host-id'] == userID) {
+                            show(hostTasksControls)
+                        }
+
+                        for (let user of data.users) {
+
+                            userItem = userItemTemplate.cloneNode(true)
+                            userItem.children['_host_field_id'].id = user.id + '_host'
+                            userItem.children['_username_field_id'].id = user.id + '_username'
+
+                            const username = userItem.children[user.id + '_username']
+                            const hostBadge = userItem.children[user.id + '_host']
+
+                            username.innerText = user.name
+
+                            if (data['host-id'] == user.id) {
+                                show(hostBadge)
+                            } else {
+                                hide(hostBadge)
+                            }
+
+                            usersList.appendChild(hostBadge)
+                            usersList.appendChild(username)
+                        }
+
+                        console.log(data)
+                        taskList = data['estimation-tasks']
+
+
+                        taskListOl.innerHTML = ''
+                        taskList.forEach((value, i) => {
+                            taskItem = taskItemTemplate.cloneNode(true)
+                            taskItem.children['link'].href = value
+                            taskItem.children['link'].innerText = DetectTaskTitle(value)
+                            taskItem.children['controls'].children['remove_btn'].setAttribute('data-id', i)
+                            if (data['host-id'] != userID) {
+                                taskItem.children['controls'].children['remove_btn'].remove()
+                            }
+                            show(taskItem)
+                            taskListOl.appendChild(taskItem)
+                        })
+
+                        break
+                    }
+                }
+
+            };
+
+            ws = ConnectViaWebsocket(roomID, username)
+
+            ws.onopen = onopen;
+            ws.onerror = onerror;
+            ws.onclose = onclose;
+            ws.onmessage = onmessage;
+
+        }
+
+        function DetectTaskTitle(url) {
+            regex = ".*jira.*browse/(.+)"
+
+            matches = url.match(regex)
+            if (matches != null && matches.length > 1) {
+                return matches[1]
+            }
+            return url
+        }
+
+        function addTask() {
+            value = taskUrlInput.value.trim()
+            if (value == "" ) {
+                return
+            }
+
+            // taskList.push({ "url": taskUrlInput.value })
+            console.log(taskUrlInput.value)
+            taskList.push(taskUrlInput.value)
+
+            ws.send(JSON.stringify({
+                "type": 4,
+                "data": {
+                    "tasks": taskList,
+                }
+            }))
+        }
+        function removeTask(e) {
+
+            btn = e.currentTarget
+            id = btn.getAttribute('data-id')
+            taskList.splice(id, 1)
+
+            ws.send(JSON.stringify({
+                "type": 4,
+                "data": {
+                    "tasks": taskList,
+                }
+            }))
+        }
+
+
+    </script>
+
+</body>
