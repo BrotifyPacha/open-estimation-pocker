@@ -109,6 +109,7 @@
         let ws = {}
 
         let taskList = []
+        let estimationValues = []
 
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -253,44 +254,51 @@
                             }
                         }
 
-                        estimationPicker.innerHTML = ''
-                        estimationButtons = []
-                        for (let value of data['estimation-values']) {
-                            estimationValue = esitmationValueTemplate.cloneNode(true)
-                            estimationValue.children['visible_value'].innerText = value
-                            estimationValue.children['max_width_value'].innerText = '0.5'
 
-                            if (value == selected) {
-                                estimationValue.setAttribute('data-selected', 'true')
-                                estimationValue.children['visible_value'].setAttribute('data-selected', 'true')
-                            }
+                        if (!arraysEqual(estimationValues, data['estimation-values'])) {
 
+                            estimationButtons = []
+                            estimationPicker.innerHTML = ''
+                            estimationValues = data['estimation-values']
+                            for (let value of data['estimation-values']) {
+                                estimationValue = esitmationValueTemplate.cloneNode(true)
+                                estimationValue.children['visible_value'].innerText = value
+                                estimationValue.children['max_width_value'].innerText = '0.5'
 
-                            estimationValue.onclick = (e) => {
-
-                                for (let btn of estimationButtons) {
-                                    btn.setAttribute('data-selected', 'false')
-                                    btn.children['visible_value'].setAttribute('data-selected', 'false')
+                                if (value == selected) {
+                                    estimationValue.setAttribute('data-selected', 'true')
+                                    estimationValue.children['visible_value'].setAttribute('data-selected', 'true')
                                 }
 
-                                button = e.currentTarget
-                                button.setAttribute('data-selected', 'true')
-                                button.children['visible_value'].setAttribute('data-selected', 'true')
 
-                                ws.send(JSON.stringify({
-                                    "type": 5,
-                                    "data": {
-                                        "estimation-value": value
+                                estimationValue.onclick = (e) => {
+
+                                    for (let btn of estimationButtons) {
+                                        btn.setAttribute('data-selected', 'false')
+                                        btn.children['visible_value'].setAttribute('data-selected', 'false')
                                     }
-                                }))
+
+                                    button = e.currentTarget
+                                    button.setAttribute('data-selected', 'true')
+                                    button.children['visible_value'].setAttribute('data-selected', 'true')
+
+                                    ws.send(JSON.stringify({
+                                        "type": 5,
+                                        "data": {
+                                            "estimation-value": value
+                                        }
+                                    }))
+
+                                }
+
+                                estimationButtons.push(estimationValue)
+
+                                estimationPicker.appendChild(estimationValue)
 
                             }
 
-                            estimationButtons.push(estimationValue)
-
-                            estimationPicker.appendChild(estimationValue)
-
                         }
+
 
                         break
                     }
@@ -305,6 +313,9 @@
             ws.onclose = onclose;
             ws.onmessage = onmessage;
 
+        }
+
+        function RedrawEstimationValuesPanel() {
         }
 
         function DetectTaskTitle(url) {
