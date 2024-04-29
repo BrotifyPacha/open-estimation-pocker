@@ -44,9 +44,9 @@ func StartHTTPServer(ctx context.Context) {
 
 	http.Handle("/{room_id}/ws", websocket.Handler(websockets.WebsocketHandler))
 
-	http.HandleFunc("/", serveFile("./home.html"))
-	http.HandleFunc("/{room_id}", serveFile("./room.html"))
-	http.HandleFunc("/ui.js", serveFile("./ui.js"))
+	http.HandleFunc("/", serveFile("./ui/home.html"))
+	http.HandleFunc("/{room_id}", serveFile("./ui/room.html"))
+	http.HandleFunc("/ui.js", serveFile("./ui/ui.js"))
 
 	server := http.Server{
 		Addr:    address,
