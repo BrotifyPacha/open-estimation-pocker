@@ -118,7 +118,7 @@ func (s *Server) WebsocketHandler(c *websocket.Conn) {
 		s.Rooms[roomID] = domain.Room{
 			ID:               roomID,
 			Users:            []domain.User{},
-			EstimationTasks:  []string{},
+			EstimationTasks:  []domain.EstimationTask{},
 			EstimationValues: domain.DefaultEstimationPreset,
 		}
 		s.roomMx.Unlock()
@@ -301,9 +301,13 @@ func (s *Server) handleConnections(username string, roomID string, c *websocket.
 						fmt.Printf("fail %v", eventDataI)
 						continue
 					}
-					tasks := make([]string, 0, len(tasksI))
-					for _, t := range tasksI {
-						tasks = append(tasks, t.(string))
+					tasks := make([]domain.EstimationTask, 0, len(tasksI))
+					for _, task := range tasksI {
+						t, ok := task.(map[string]any)
+						if !ok {
+							continue
+						}
+						tasks = append(tasks, domain.EstimationTask{Url: t["url"].(string)})
 					}
 
 					s.roomMx.Lock()
@@ -318,11 +322,59 @@ func (s *Server) handleConnections(username string, roomID string, c *websocket.
 
 					room.EstimationTasks = tasks
 
+					if len(room.EstimationTasks) == 0 {
+						room.ActiveTask = ""
+					} else {
+						if room.ActiveTask == "" {
+							room.ActiveTask = room.EstimationTasks[0].Url
+						}
+					}
+
 					s.Rooms[event.RoomID] = room
 
 					s.roomMx.Unlock()
 					go s.Queue.Publish(domain.RoomStateEvent(room))
 					continue
+				}
+
+			case domain.EventTypeUserPickedEstimationValue:
+				{
+					eventDataI, ok := event.Data.(map[string]any)
+					if !ok {
+						continue
+					}
+					estivationValue, ok := eventDataI["estimation-value"].(float64)
+					if !ok {
+						continue
+					}
+
+					s.roomMx.Lock()
+
+					room := s.Rooms[event.RoomID]
+
+					if room.ActiveTask == "" {
+						s.roomMx.Unlock()
+						continue
+					}
+
+					for i, task := range room.EstimationTasks {
+						if task.Url != room.ActiveTask {
+							continue
+						}
+
+						if task.Estimations == nil {
+							task.Estimations = make(map[string]float64)
+						}
+
+						task.Estimations[event.UserID] = estivationValue
+						room.EstimationTasks[i] = task
+					}
+
+					s.Rooms[event.RoomID] = room
+					s.roomMx.Unlock()
+
+					go s.Queue.Publish(domain.RoomStateEvent(room))
+
 				}
 			}
 

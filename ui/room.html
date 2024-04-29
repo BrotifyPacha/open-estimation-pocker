@@ -23,7 +23,7 @@
     <div id="room-view" class="hidden flex flex-col grid grid-cols-2 gap-5 px-5">
         <div class="col-span-1 grid-cols-2">
             <h2 class="col-span-2">Room ID: <span id='room_id_field'></span></h2>
-            <ol id="users_list" class="grid grid-cols-10 gap-1">
+            <ol id="users_list" class="grid grid-cols-3 gap-1">
             </ol>
         </div>
 
@@ -56,7 +56,8 @@
         <!-- user template -->
         <div id="users_list_item_template">
             <span class="col-start-1 col-span-1 justify-self-end" id="_host_field_id">👑</span>
-            <span class="col-start-2 col-span-9 text-lg" id="_username_field_id">username</span>
+            <span class="col-start-2 col-span-1 text-lg" id="_username_field_id">username</span>
+            <span class="col-start-3 col-span-1 justify-self-start" id="_estimation_field_id"></span>
         </div>
         <!-- task item template -->
         <li class="group flex justify-between bg-zinc-50/5 hover:bg-zinc-500/10 pl-3 py-1"
@@ -179,6 +180,10 @@
                     }
                     // room state changed event
                     case 3: {
+                        console.log(data)
+                        taskList = data['estimation-tasks']
+                        activeTask = data['active-task']
+
                         roomIDField.innerText = data.id
 
                         usersList.innerHTML = ''
@@ -193,9 +198,11 @@
                             userItem = userItemTemplate.cloneNode(true)
                             userItem.children['_host_field_id'].id = user.id + '_host'
                             userItem.children['_username_field_id'].id = user.id + '_username'
+                            userItem.children['_estimation_field_id'].id = user.id + '_estimation'
 
                             const username = userItem.children[user.id + '_username']
                             const hostBadge = userItem.children[user.id + '_host']
+                            const estimationReadyBadge = userItem.children[user.id + '_estimation']
 
                             username.innerText = user.name
 
@@ -205,19 +212,27 @@
                                 hide(hostBadge)
                             }
 
+                            for (let value of data['estimation-tasks']) {
+                                if (value['url'] != activeTask) {
+                                    continue
+                                }
+                                selected = value['estimations'][user.id]
+                                if (selected != undefined) {
+                                    estimationReadyBadge.innerText = 'Ready'
+                                }
+                            }
+
                             usersList.appendChild(hostBadge)
                             usersList.appendChild(username)
+                            usersList.appendChild(estimationReadyBadge)
                         }
-
-                        console.log(data)
-                        taskList = data['estimation-tasks']
 
 
                         taskListOl.innerHTML = ''
                         taskList.forEach((value, i) => {
                             taskItem = taskItemTemplate.cloneNode(true)
                             taskItem.children['link'].href = value
-                            taskItem.children['link'].innerText = DetectTaskTitle(value)
+                            taskItem.children['link'].innerText = DetectTaskTitle(value['url'])
                             taskItem.children['controls'].children['remove_btn'].setAttribute('data-id', i)
                             if (data['host-id'] != userID) {
                                 taskItem.children['controls'].children['remove_btn'].remove()
@@ -226,13 +241,30 @@
                             taskListOl.appendChild(taskItem)
                         })
 
+                        selectedButton = ''
+                        for (let value of data['estimation-tasks']) {
+                            if (value['url'] != activeTask) {
+                                continue
+                            }
+                            selected = value['estimations'][userID]
+                            console.log(selected)
+                            if (selected != undefined) {
+                                selectedButton = selected
+                            }
+                        }
+
                         estimationPicker.innerHTML = ''
                         estimationButtons = []
                         for (let value of data['estimation-values']) {
-                            console.log(value)
                             estimationValue = esitmationValueTemplate.cloneNode(true)
                             estimationValue.children['visible_value'].innerText = value
                             estimationValue.children['max_width_value'].innerText = '0.5'
+
+                            if (value == selected) {
+                                estimationValue.setAttribute('data-selected', 'true')
+                                estimationValue.children['visible_value'].setAttribute('data-selected', 'true')
+                            }
+
 
                             estimationValue.onclick = (e) => {
 
@@ -242,9 +274,15 @@
                                 }
 
                                 button = e.currentTarget
-                                console.log(button)
                                 button.setAttribute('data-selected', 'true')
                                 button.children['visible_value'].setAttribute('data-selected', 'true')
+
+                                ws.send(JSON.stringify({
+                                    "type": 5,
+                                    "data": {
+                                        "estimation-value": value
+                                    }
+                                }))
 
                             }
 
@@ -285,9 +323,7 @@
                 return
             }
 
-            // taskList.push({ "url": taskUrlInput.value })
-            console.log(taskUrlInput.value)
-            taskList.push(taskUrlInput.value)
+            taskList.push({ "url": taskUrlInput.value })
 
             ws.send(JSON.stringify({
                 "type": 4,
@@ -309,10 +345,6 @@
                 }
             }))
         }
-
-        function selectEstimation(e) {
-        }
-
 
     </script>
 

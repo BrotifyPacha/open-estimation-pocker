@@ -13,16 +13,17 @@ var EstimationValuePresets = [][]float64{
 var DefaultEstimationPreset = EstimationValuePresets[0]
 
 type Room struct {
-	ID               string    `json:"id"`
-	HostID           string    `json:"host-id"`
-	Users            []User    `json:"users"`
-	EstimationValues []float64 `json:"estimation-values"`
-	EstimationTasks  []string  `json:"estimation-tasks"`
+	ID               string           `json:"id"`
+	HostID           string           `json:"host-id"`
+	Users            []User           `json:"users"`
+	EstimationValues []float64        `json:"estimation-values"`
+	EstimationTasks  []EstimationTask `json:"estimation-tasks"`
+	ActiveTask       string           `json:"active-task"`
 }
 
 type EstimationTask struct {
-	Url         string
-	Estimations map[string]float64 // userID -> estimation
+	Url                 string             `json:"url"`
+	Estimations         map[string]float64 `json:"estimations"` // userID -> estimation
 }
 
 type EventQueue interface {

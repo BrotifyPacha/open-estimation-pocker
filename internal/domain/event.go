@@ -10,6 +10,8 @@ const (
 	EventTypeUserLeft
 	EventTypeRoomState
 	EventTypeTaskListChanged
+	EventTypeUserPickedEstimationValue
+	EventTypeHostRevealEstimations
 )
 
 type Event struct {
@@ -30,29 +32,6 @@ type UserData struct {
 
 type TaskListData struct {
 	Tasks []EstimationTask `tasks`
-}
-
-func TaskListDataFromInterface(i any) (*TaskListData, bool) {
-	eventDataI, ok := i.(map[string]any)
-	if !ok {
-		return nil, false
-	}
-	tasksI, ok := eventDataI["tasks"].([]map[string]any)
-	if !ok {
-		return nil, false
-	}
-
-	result := TaskListData{
-		Tasks: make([]EstimationTask, len(tasksI)),
-	}
-
-	for _, taskI := range tasksI {
-		result.Tasks = append(result.Tasks, EstimationTask{
-			Url: taskI["url"].(string),
-		})
-	}
-
-	return nil, false
 }
 
 func UserInitializationEvent(roomID string, user User) Event {
