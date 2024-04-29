@@ -43,6 +43,13 @@
             </div>
 
         </div>
+
+        <div class="col-span-2">
+        <div id="estimation-picker" class="flex justify-center" >
+
+        </div>
+        </div>
+
     </div>
 
     <div class="hidden">
@@ -60,6 +67,29 @@
                 <button id="remove_btn" class="px-3 bg-zinc-700" onclick="removeTask(event)">X</button>
             </div>
         </li>
+        <!-- estimation value template -->
+        <div id="estimation_value_template" class="
+            text-lg
+            relative
+            cursor-pointer
+            transition-all
+            hover:-translate-y-1
+            hover:scale-[1.12]
+            hover:drop-shadow-md
+            select-none
+            data-[selected=true]:drop-shadow-md
+            data-[selected=true]:scale-[1.18]
+            data-[selected=true]:-translate-y-2
+            ">
+            <span id="visible_value" class="
+                absolute w-100 inset-0 text-center
+                rounded-md
+                bg-zinc-700
+                mx-1 py-3
+                data-[selected=true]:bg-cyan-700
+                "></span>
+            <div id="max_width_value" class="invisible px-2 py-3"></div>
+        </div>
     </div>
 
     <script>
@@ -100,6 +130,9 @@
             const taskListOl = document.getElementById('task_list')
             const taskItemTemplate = document.getElementById('task_item_template')
 
+
+            const estimationPicker = document.getElementById("estimation-picker")
+            const esitmationValueTemplate = document.getElementById("estimation_value_template")
 
             var heartbeatWorkerID = 0
 
@@ -193,6 +226,34 @@
                             taskListOl.appendChild(taskItem)
                         })
 
+                        estimationPicker.innerHTML = ''
+                        estimationButtons = []
+                        for (let value of data['estimation-values']) {
+                            console.log(value)
+                            estimationValue = esitmationValueTemplate.cloneNode(true)
+                            estimationValue.children['visible_value'].innerText = value
+                            estimationValue.children['max_width_value'].innerText = '0.5'
+
+                            estimationValue.onclick = (e) => {
+
+                                for (let btn of estimationButtons) {
+                                    btn.setAttribute('data-selected', 'false')
+                                    btn.children['visible_value'].setAttribute('data-selected', 'false')
+                                }
+
+                                button = e.currentTarget
+                                console.log(button)
+                                button.setAttribute('data-selected', 'true')
+                                button.children['visible_value'].setAttribute('data-selected', 'true')
+
+                            }
+
+                            estimationButtons.push(estimationValue)
+
+                            estimationPicker.appendChild(estimationValue)
+
+                        }
+
                         break
                     }
                 }
@@ -247,6 +308,9 @@
                     "tasks": taskList,
                 }
             }))
+        }
+
+        function selectEstimation(e) {
         }
 
 

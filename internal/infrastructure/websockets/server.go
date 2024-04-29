@@ -116,10 +116,10 @@ func (s *Server) WebsocketHandler(c *websocket.Conn) {
 		log.Println("room didn't exist created one")
 		s.roomMx.Lock()
 		s.Rooms[roomID] = domain.Room{
-			ID:              roomID,
-			Users:           []domain.User{},
-			EstimationTasks: []string{},
-			// EstimationValues: domain.DefaultEstimationPreset,
+			ID:               roomID,
+			Users:            []domain.User{},
+			EstimationTasks:  []string{},
+			EstimationValues: domain.DefaultEstimationPreset,
 		}
 		s.roomMx.Unlock()
 	}

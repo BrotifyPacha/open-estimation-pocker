@@ -13,11 +13,11 @@ var EstimationValuePresets = [][]float64{
 var DefaultEstimationPreset = EstimationValuePresets[0]
 
 type Room struct {
-	ID               string   `json:"id"`
-	HostID           string   `json:"host-id"`
-	Users            []User   `json:"users"`
-	EstimationValues []string `json:"estimation-values"`
-	EstimationTasks  []string `json:"estimation-tasks"`
+	ID               string    `json:"id"`
+	HostID           string    `json:"host-id"`
+	Users            []User    `json:"users"`
+	EstimationValues []float64 `json:"estimation-values"`
+	EstimationTasks  []string  `json:"estimation-tasks"`
 }
 
 type EstimationTask struct {
