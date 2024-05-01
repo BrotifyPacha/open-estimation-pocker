@@ -335,8 +335,9 @@
             if (value == "" ) {
                 return
             }
+            taskUrlInput.value = ''
 
-            taskList.push({ "url": taskUrlInput.value })
+            taskList.push({ "url": value })
 
             ws.send(JSON.stringify({
                 "type": 4,
