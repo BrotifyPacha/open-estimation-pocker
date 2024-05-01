@@ -64,7 +64,7 @@
             id="task_item_template">
             <a id="link" href="https://google.ru/">BCKLG-31</a>
             <div id="controls" class="hover-group:flex">
-                <button id="open_btn" data-admin-only="true" class="px-3 bg-zinc-700" onclick="">Select</button>
+                <button id="select_btn" class="px-3 bg-zinc-700" onclick="">Select</button>
                 <button id="remove_btn" class="px-3 bg-zinc-700" onclick="removeTask(event)">X</button>
             </div>
         </li>
@@ -235,8 +235,10 @@
                             taskItem.children['link'].href = value
                             taskItem.children['link'].innerText = DetectTaskTitle(value['url'])
                             taskItem.children['controls'].children['remove_btn'].setAttribute('data-id', i)
+                            taskItem.children['controls'].children['select_btn'].setAttribute('data-id', i)
                             if (data['host-id'] != userID) {
                                 taskItem.children['controls'].children['remove_btn'].remove()
+                                taskItem.children['controls'].children['select_btn'].remove()
                             }
                             show(taskItem)
                             taskListOl.appendChild(taskItem)
