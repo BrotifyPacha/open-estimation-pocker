@@ -44,7 +44,10 @@
 
         </div>
 
-        <div class="col-span-2">
+        <div class="col-span-2 flex flex-col gap-3">
+        <div class="flex justify-center">
+            <button id="reveal-button" class="px-3 py-1 bg-cyan-700 disabled:bg-zinc-700">Reveal</button>
+        </div>
         <div id="estimation-picker" class="flex justify-center" >
 
         </div>
@@ -133,8 +136,13 @@
             const taskItemTemplate = document.getElementById('task_item_template')
 
 
+            const revealBtn = document.getElementById("reveal-button")
             const estimationPicker = document.getElementById("estimation-picker")
             const esitmationValueTemplate = document.getElementById("estimation_value_template")
+
+            revealBtn.onclick = (e) => {
+                ws.send(JSON.stringify({ "type": 6 }))
+            }
 
             var heartbeatWorkerID = 0
 
@@ -184,16 +192,37 @@
                         console.log(data)
                         taskList = data['estimation-tasks']
                         activeTask = data['active-task']
+                        estimationsRevealed = false
 
                         roomIDField.innerText = data.id
 
                         usersList.innerHTML = ''
 
                         hide(hostTasksControls)
+                        hide(revealBtn)
                         if (data['host-id'] == userID) {
                             show(hostTasksControls)
+                            show(revealBtn)
                         }
 
+                        selected = ''
+                        selectedButton = ''
+                        for (let task of data['estimation-tasks']) {
+                            if (task['url'] != activeTask) {
+                                continue
+                            }
+                            estimationsRevealed = task['estimations-revealed']
+                            console.log(task)
+                            estimations = task['estimations']
+                            if (estimations != undefined) {
+                                selected = estimations[userID]
+                                if (selected != undefined) {
+                                    selectedButton = selected
+                                }
+                            }
+                        }
+
+                        atLeastOneIsReady = false;
                         for (let user of data.users) {
 
                             userItem = userItemTemplate.cloneNode(true)
@@ -220,8 +249,14 @@
                                 estimations = value['estimations']
                                 if (estimations != undefined) {
                                     selected = value['estimations'][user.id]
+                                    estimationReadyBadge.innerText = ''
                                     if (selected != undefined) {
-                                        estimationReadyBadge.innerText = 'Ready'
+                                        if (!estimationsRevealed) {
+                                            estimationReadyBadge.innerText = 'Ready'
+                                        } else {
+                                            estimationReadyBadge.innerText = selected
+                                        }
+                                        atLeastOneIsReady = true
                                     }
                                 }
                             }
@@ -231,6 +266,11 @@
                             usersList.appendChild(estimationReadyBadge)
                         }
 
+                        if (!atLeastOneIsReady || estimationsRevealed) {
+                            revealBtn.disabled = true
+                        } else {
+                            revealBtn.disabled = false
+                        }
 
                         taskListOl.innerHTML = ''
                         taskList.forEach((value, i) => {
@@ -246,22 +286,6 @@
                             show(taskItem)
                             taskListOl.appendChild(taskItem)
                         })
-
-                        selected = ''
-                        selectedButton = ''
-                        for (let task of data['estimation-tasks']) {
-                            if (task['url'] != activeTask) {
-                                continue
-                            }
-                            console.log(task)
-                            estimations = task['estimations']
-                            if (estimations != undefined) {
-                                selected = estimations[userID]
-                                if (selected != undefined) {
-                                    selectedButton = selected
-                                }
-                            }
-                        }
 
 
                         if (!arraysEqual(estimationValues, data['estimation-values'])) {

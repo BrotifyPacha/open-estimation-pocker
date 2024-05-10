@@ -11,7 +11,7 @@ const (
 	EventTypeRoomState
 	EventTypeTaskListChanged
 	EventTypeUserPickedEstimationValue
-	EventTypeHostRevealEstimations
+	EventTypeRevealEstimations
 )
 
 type Event struct {
@@ -63,5 +63,12 @@ func RoomStateEvent(room Room) Event {
 		RoomID: room.ID,
 		Type:   EventTypeRoomState,
 		Data:   room,
+	}
+}
+
+func RevealEstimations(roomID string) Event {
+	return Event{
+		RoomID: roomID,
+		Type:   EventTypeRevealEstimations,
 	}
 }

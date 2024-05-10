@@ -376,6 +376,30 @@ func (s *Server) handleConnections(username string, roomID string, c *websocket.
 					go s.Queue.Publish(domain.RoomStateEvent(room))
 
 				}
+			case domain.EventTypeRevealEstimations:
+				{
+					s.roomMx.Lock()
+
+					room := s.Rooms[event.RoomID]
+
+					if room.ActiveTask == "" {
+						s.roomMx.Unlock()
+						continue
+					}
+
+					for i, task := range room.EstimationTasks {
+						if task.Url != room.ActiveTask {
+							continue
+						}
+						room.EstimationTasks[i].EstimationsRevealed = true
+					}
+
+					s.Rooms[event.RoomID] = room
+
+					s.roomMx.Unlock()
+
+					go s.Queue.Publish(domain.RoomStateEvent(room))
+				}
 			}
 
 			s.connMx.RLock()

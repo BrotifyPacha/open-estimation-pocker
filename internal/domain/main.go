@@ -24,6 +24,7 @@ type Room struct {
 type EstimationTask struct {
 	Url                 string             `json:"url"`
 	Estimations         map[string]float64 `json:"estimations"` // userID -> estimation
+	EstimationsRevealed bool               `json:"estimations-revealed"`
 }
 
 type EventQueue interface {
