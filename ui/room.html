@@ -63,7 +63,12 @@
             <span class="col-start-3 col-span-1 justify-self-start" id="_estimation_field_id"></span>
         </div>
         <!-- task item template -->
-        <li class="group flex justify-between bg-zinc-50/5 hover:bg-zinc-500/10 pl-3 py-1"
+        <li class="
+            group flex justify-between
+            bg-zinc-50/5 hover:bg-zinc-500/10
+            data-[selected=true]:bg-cyan-900
+            hover:data-[selected=true]:bg-cyan-700/80
+            pl-3 py-1"
             id="task_item_template">
             <a id="link" href="https://google.ru/">BCKLG-31</a>
             <div id="controls" class="hover-group:flex">
@@ -282,9 +287,12 @@
                                 taskList.splice(i, 1)
                                 ws.send(JSON.stringify({ "type": 4, "data": { "tasks": taskList }}))
                             }
-                            taskItem.children['controls'].children['select_btn'].setAttribute('data-id', i)
+                            taskItem.children['controls'].children['select_btn'].onclick = (e) => {
+                                ws.send(JSON.stringify({ "type": 7, "data": { "new-task": value['url']}}))
+                            }
 
                             if (activeTask == value['url']) {
+                                taskItem.setAttribute('data-selected', true)
                                 taskItem.children['controls'].children['select_btn'].remove()
                             }
                             if (data['host-id'] != userID) {

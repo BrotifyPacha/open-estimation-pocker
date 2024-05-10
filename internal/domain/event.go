@@ -12,6 +12,7 @@ const (
 	EventTypeTaskListChanged
 	EventTypeUserPickedEstimationValue
 	EventTypeRevealEstimations
+	EventTypeSelectedTaskChanged
 )
 
 type Event struct {
