@@ -279,10 +279,13 @@
                             taskItem.children['link'].innerText = DetectTaskTitle(value['url'])
                             taskItem.children['controls'].children['remove_btn'].setAttribute('data-id', i)
                             taskItem.children['controls'].children['select_btn'].setAttribute('data-id', i)
-                            if (data['host-id'] != userID) {
-                                taskItem.children['controls'].children['remove_btn'].remove()
+                            if (activeTask == value['url']) {
                                 taskItem.children['controls'].children['select_btn'].remove()
                             }
+                            if (data['host-id'] != userID) {
+                                taskItem.children['controls'].remove()
+                            }
+
                             show(taskItem)
                             taskListOl.appendChild(taskItem)
                         })
