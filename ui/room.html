@@ -217,9 +217,12 @@
                                 if (value['url'] != activeTask) {
                                     continue
                                 }
-                                selected = value['estimations'][user.id]
-                                if (selected != undefined) {
-                                    estimationReadyBadge.innerText = 'Ready'
+                                estimations = value['estimations']
+                                if (estimations != undefined) {
+                                    selected = value['estimations'][user.id]
+                                    if (selected != undefined) {
+                                        estimationReadyBadge.innerText = 'Ready'
+                                    }
                                 }
                             }
 
@@ -244,15 +247,19 @@
                             taskListOl.appendChild(taskItem)
                         })
 
+                        selected = ''
                         selectedButton = ''
-                        for (let value of data['estimation-tasks']) {
-                            if (value['url'] != activeTask) {
+                        for (let task of data['estimation-tasks']) {
+                            if (task['url'] != activeTask) {
                                 continue
                             }
-                            selected = value['estimations'][userID]
-                            console.log(selected)
-                            if (selected != undefined) {
-                                selectedButton = selected
+                            console.log(task)
+                            estimations = task['estimations']
+                            if (estimations != undefined) {
+                                selected = estimations[userID]
+                                if (selected != undefined) {
+                                    selectedButton = selected
+                                }
                             }
                         }
 
