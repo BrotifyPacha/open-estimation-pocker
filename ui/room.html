@@ -63,12 +63,17 @@
             <span class="col-start-3 col-span-1 justify-self-start" id="_estimation_field_id"></span>
         </div>
         <!-- task item template -->
-        <li class="group flex justify-between bg-zinc-50/5 hover:bg-zinc-500/10 pl-3 py-1"
+        <li class="
+            group flex justify-between
+            bg-zinc-50/5 hover:bg-zinc-500/10
+            data-[selected=true]:bg-cyan-900
+            hover:data-[selected=true]:bg-cyan-700/80
+            pl-3 py-1"
             id="task_item_template">
             <a id="link" href="https://google.ru/">BCKLG-31</a>
             <div id="controls" class="hover-group:flex">
-                <button id="select_btn" class="px-3 bg-zinc-700" onclick="">Select</button>
-                <button id="remove_btn" class="px-3 bg-zinc-700" onclick="removeTask(event)">X</button>
+                <button id="select_btn" class="px-3 bg-zinc-700 invisible group-hover:visible">Select</button>
+                <button id="remove_btn" class="px-3 bg-zinc-700 invisible group-hover:visible">X</button>
             </div>
         </li>
         <!-- estimation value template -->
@@ -277,12 +282,23 @@
                             taskItem = taskItemTemplate.cloneNode(true)
                             taskItem.children['link'].href = value
                             taskItem.children['link'].innerText = DetectTaskTitle(value['url'])
-                            taskItem.children['controls'].children['remove_btn'].setAttribute('data-id', i)
-                            taskItem.children['controls'].children['select_btn'].setAttribute('data-id', i)
-                            if (data['host-id'] != userID) {
-                                taskItem.children['controls'].children['remove_btn'].remove()
+
+                            taskItem.children['controls'].children['remove_btn'].onclick = (e) => {
+                                taskList.splice(i, 1)
+                                ws.send(JSON.stringify({ "type": 4, "data": { "tasks": taskList }}))
+                            }
+                            taskItem.children['controls'].children['select_btn'].onclick = (e) => {
+                                ws.send(JSON.stringify({ "type": 7, "data": { "new-task": value['url']}}))
+                            }
+
+                            if (activeTask == value['url']) {
+                                taskItem.setAttribute('data-selected', true)
                                 taskItem.children['controls'].children['select_btn'].remove()
                             }
+                            if (data['host-id'] != userID) {
+                                taskItem.children['controls'].remove()
+                            }
+
                             show(taskItem)
                             taskListOl.appendChild(taskItem)
                         })
@@ -369,19 +385,6 @@
             taskUrlInput.value = ''
 
             taskList.push({ "url": value })
-
-            ws.send(JSON.stringify({
-                "type": 4,
-                "data": {
-                    "tasks": taskList,
-                }
-            }))
-        }
-        function removeTask(e) {
-
-            btn = e.currentTarget
-            id = btn.getAttribute('data-id')
-            taskList.splice(id, 1)
 
             ws.send(JSON.stringify({
                 "type": 4,

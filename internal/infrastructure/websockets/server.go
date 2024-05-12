@@ -400,6 +400,30 @@ func (s *Server) handleConnections(username string, roomID string, c *websocket.
 
 					go s.Queue.Publish(domain.RoomStateEvent(room))
 				}
+			case domain.EventTypeSelectedTaskChanged:
+				{
+					s.roomMx.Lock()
+
+					eventDataI, ok := event.Data.(map[string]any)
+					if !ok {
+						s.roomMx.Unlock()
+						continue
+					}
+
+					newActiveTask, ok := eventDataI["new-task"].(string)
+					if !ok {
+						s.roomMx.Unlock()
+						continue
+					}
+
+					room := s.Rooms[event.RoomID]
+					room.ActiveTask = newActiveTask
+					s.Rooms[event.RoomID] = room
+
+					s.roomMx.Unlock()
+
+					go s.Queue.Publish(domain.RoomStateEvent(room))
+				}
 			}
 
 			s.connMx.RLock()
