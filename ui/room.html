@@ -70,7 +70,7 @@
             hover:data-[selected=true]:bg-cyan-700/80
             pl-3 py-1"
             id="task_item_template">
-            <a id="link" href="https://google.ru/">BCKLG-31</a>
+            <a id="link" target="_blank" href="https://google.ru/">BCKLG-31</a>
             <div id="controls" class="hover-group:flex">
                 <button id="select_btn" class="px-3 bg-zinc-700 invisible group-hover:visible">Select</button>
                 <button id="remove_btn" class="px-3 bg-zinc-700 invisible group-hover:visible">X</button>
@@ -149,33 +149,22 @@
                 ws.send(JSON.stringify({ "type": 6 }))
             }
 
-            var heartbeatWorkerID = 0
-
             const onopen = (event) => {
                 console.log("connection open ", event)
                 hide(loginView)
                 show(roomView)
-
-                heartbeatWorkerID = setInterval(function(){
-                    const ws = event.target
-
-                    // console.log("send heartbeat")
-                    // console.log(ws)
-                    ws.send('ping')
-
-                }, 1000)
             };
             const onerror = (event) => {
                 console.log("error: ", event)
                 show(loginView)
                 hide(roomView)
-                clearInterval(heartbeatWorkerID)
+                heartbeatWorker.terminate()
             };
             const onclose = (event) => {
                 console.log("closed: ", event)
                 show(loginView)
                 hide(roomView)
-                clearInterval(heartbeatWorkerID)
+                heartbeatWorker.terminate()
             };
             const onmessage = (event) => {
                 if (event.data == 'pong') {
@@ -280,7 +269,7 @@
                         taskListOl.innerHTML = ''
                         taskList.forEach((value, i) => {
                             taskItem = taskItemTemplate.cloneNode(true)
-                            taskItem.children['link'].href = value
+                            taskItem.children['link'].href = value['url']
                             taskItem.children['link'].innerText = DetectTaskTitle(value['url'])
 
                             taskItem.children['controls'].children['remove_btn'].onclick = (e) => {
@@ -361,6 +350,11 @@
             ws.onerror = onerror;
             ws.onclose = onclose;
             ws.onmessage = onmessage;
+
+            heartbeatWorker = new Worker("./worker.js")
+            heartbeatWorker.onmessage = (e) => {
+                ws.send('ping')
+            }
 
         }
 
