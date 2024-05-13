@@ -149,33 +149,22 @@
                 ws.send(JSON.stringify({ "type": 6 }))
             }
 
-            var heartbeatWorkerID = 0
-
             const onopen = (event) => {
                 console.log("connection open ", event)
                 hide(loginView)
                 show(roomView)
-
-                heartbeatWorkerID = setInterval(function(){
-                    const ws = event.target
-
-                    // console.log("send heartbeat")
-                    // console.log(ws)
-                    ws.send('ping')
-
-                }, 1000)
             };
             const onerror = (event) => {
                 console.log("error: ", event)
                 show(loginView)
                 hide(roomView)
-                clearInterval(heartbeatWorkerID)
+                heartbeatWorker.terminate()
             };
             const onclose = (event) => {
                 console.log("closed: ", event)
                 show(loginView)
                 hide(roomView)
-                clearInterval(heartbeatWorkerID)
+                heartbeatWorker.terminate()
             };
             const onmessage = (event) => {
                 if (event.data == 'pong') {
@@ -361,6 +350,11 @@
             ws.onerror = onerror;
             ws.onclose = onclose;
             ws.onmessage = onmessage;
+
+            heartbeatWorker = new Worker("./worker.js")
+            heartbeatWorker.onmessage = (e) => {
+                ws.send('ping')
+            }
 
         }
 

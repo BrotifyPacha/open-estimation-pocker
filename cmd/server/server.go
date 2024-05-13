@@ -47,6 +47,7 @@ func StartHTTPServer(ctx context.Context) {
 	http.HandleFunc("/", serveFile("./ui/home.html"))
 	http.HandleFunc("/{room_id}", serveFile("./ui/room.html"))
 	http.HandleFunc("/ui.js", serveFile("./ui/ui.js"))
+	http.HandleFunc("/worker.js", serveFile("./ui/worker.js"))
 
 	server := http.Server{
 		Addr:    address,
