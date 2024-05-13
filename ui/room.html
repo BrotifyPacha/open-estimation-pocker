@@ -269,7 +269,7 @@
                         taskListOl.innerHTML = ''
                         taskList.forEach((value, i) => {
                             taskItem = taskItemTemplate.cloneNode(true)
-                            taskItem.children['link'].href = value
+                            taskItem.children['link'].href = value['url']
                             taskItem.children['link'].innerText = DetectTaskTitle(value['url'])
 
                             taskItem.children['controls'].children['remove_btn'].onclick = (e) => {
