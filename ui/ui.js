@@ -38,3 +38,11 @@ function arraysEqual(a, b) {
   }
   return true;
 }
+
+function copyToClipboard(text) {
+    try {
+      navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+  }

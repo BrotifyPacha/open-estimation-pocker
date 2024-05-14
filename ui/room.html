@@ -3,8 +3,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="./ui.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
 </head>
-<body class="container mx-auto flex flex-col gap-5 sm:pt-10 pt-3 bg-zinc-800 text-slate-50">
+<body class="container mx-auto flex flex-col gap-5 sm:pt-10 pt-3 bg-zinc-800 text-slate-50 cursor-default">
 
     <h2 class="text-center text-2xl">Estimation Poker</h2>
 
@@ -22,7 +23,13 @@
 
     <div id="room-view" class="hidden flex flex-col grid grid-cols-2 gap-5 px-5">
         <div class="col-span-1 grid-cols-2">
-            <h2 class="col-span-2">Room ID: <span id='room_id_field'></span></h2>
+            <h2 class="col-span-2 flex gap-2 group">
+                Room ID:
+                <span id='room_id_field'></span>
+                <span class="cursor-pointer hover:text-cyan-400 transition-all material-symbols-outlined select-none"
+                      onclick="copyToClipboard(window.location.href.replace(window.location.search, ''))"
+                      > content_copy </span>
+            </h2>
             <ol id="users_list" class="grid grid-cols-3 gap-1">
             </ol>
         </div>
