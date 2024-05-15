@@ -40,7 +40,7 @@
             </ol>
 
 
-            <div id="host-tasks-controls" data-admin-only="true" class="grid grid-cols-6 gap-2">
+            <div id="host-tasks-controls" class="grid grid-cols-6 gap-2">
                 <input
                         class="col-span-5 bg-cyan-900 px-3 py-1 rounded-none"
                         placeholder="url" id="task_url" type="text">
@@ -71,16 +71,17 @@
         </div>
         <!-- task item template -->
         <li class="
-            group flex justify-between
+            relative
+            group flex justify-between items-center
             bg-zinc-50/5 hover:bg-zinc-500/10
             data-[selected=true]:bg-cyan-900
             hover:data-[selected=true]:bg-cyan-700/80
             pl-3 py-1"
             id="task_item_template">
             <a id="link" target="_blank" href="https://google.ru/">BCKLG-31</a>
-            <div id="controls" class="hover-group:flex">
-                <button id="select_btn" class="px-3 bg-zinc-700 invisible group-hover:visible">Select</button>
-                <button id="remove_btn" class="px-3 bg-zinc-700 invisible group-hover:visible">X</button>
+            <div id="controls" class="flex items-center gap-1 group-hover:visible invisible focus-within:visible">
+                <button id="select_btn" class="bg-zinc-700 px-2">Select</button>
+                <button id="remove_btn" class="bg-zinc-700 material-symbols-outlined">close</button>
             </div>
         </li>
         <!-- estimation value template -->
