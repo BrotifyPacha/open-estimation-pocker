@@ -73,14 +73,14 @@ func (s *Server) runHeartbeatChecker(ctx context.Context) {
 			logHeartBeats("checker: start")
 			toClose := []string{}
 
-			s.connMx.RLock()
+			s.connMx.Lock()
 			for userID, userConn := range s.Connections {
 				if time.Since(userConn.LastHeartbeat) > HeartBeatInterval {
 					logHeartBeats("checker: failed roomID = %s userID = %s name %s", userConn.RoomID, userID, userConn.Name)
 					toClose = append(toClose, userID)
 				}
 			}
-			s.connMx.RUnlock()
+			s.connMx.Unlock()
 
 			s.connMx.Lock()
 			for _, userIDToClose := range toClose {
@@ -111,18 +111,18 @@ func (s *Server) WebsocketHandler(c *websocket.Conn) {
 		return
 	}
 
+	s.roomMx.Lock()
 	_, ok := s.Rooms[roomID]
 	if !ok {
 		log.Println("room didn't exist created one")
-		s.roomMx.Lock()
 		s.Rooms[roomID] = domain.Room{
 			ID:               roomID,
 			Users:            []domain.User{},
 			EstimationTasks:  []domain.EstimationTask{},
 			EstimationValues: domain.DefaultEstimationPreset,
 		}
-		s.roomMx.Unlock()
 	}
+	s.roomMx.Unlock()
 
 	s.handleConnections(username, roomID, c)
 }
@@ -426,7 +426,8 @@ func (s *Server) handleConnections(username string, roomID string, c *websocket.
 				}
 			}
 
-			s.connMx.RLock()
+			s.connMx.Lock()
+			s.roomMx.Lock()
 			for _, connection := range s.Connections {
 				if connection.RoomID != event.RoomID {
 					continue
@@ -437,7 +438,8 @@ func (s *Server) handleConnections(username string, roomID string, c *websocket.
 					fmt.Println("ws send error:", err.Error())
 				}
 			}
-			s.connMx.RUnlock()
+			s.roomMx.Unlock()
+			s.connMx.Unlock()
 		}
 	}()
 

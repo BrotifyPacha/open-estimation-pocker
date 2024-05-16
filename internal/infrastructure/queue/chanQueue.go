@@ -2,7 +2,6 @@ package queue
 
 import (
 	"estimation-poker/internal/domain"
-	"log"
 )
 
 type ChanQueue struct {
@@ -14,7 +13,6 @@ func NewChanQueue() *ChanQueue {
 }
 
 func (c *ChanQueue) Publish(event domain.Event) error {
-	log.Printf("%#v\n", event)
 	c.ch <- event
 	return nil
 }
